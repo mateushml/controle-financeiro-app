@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class=""> <!-- A classe 'dark' será adicionada aqui para o modo escuro -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanças Pessoais</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link rel="manifest" href="data:application/manifest+json,{
+        &quot;name&quot;: &quot;Controle Financeiro&quot;,
+        &quot;short_name&quot;: &quot;Finanças&quot;,
+        &quot;start_url&quot;: &quot;.&quot;,
+        &quot;display&quot;: &quot;standalone&quot;,
+        &quot;background_color&quot;: &quot;#ffffff&quot;,
+        &quot;theme_color&quot;: &quot;#1f2937&quot;,
+        &quot;icons&quot;: [
+            { &quot;src&quot;: &quot;https://placehold.co/192x192/1f2937/ffffff?text=FP&quot;, &quot;type&quot;: &quot;image/png&quot;, &quot;sizes&quot;: &quot;192x192&quot; },
+            { &quot;src&quot;: &quot;https://placehold.co/512x512/1f2937/ffffff?text=FP&quot;, &quot;type&quot;: &quot;image/png&quot;, &quot;sizes&quot;: &quot;512x512&quot; }
+        ]
+    }">
+    <meta name="theme-color" content="#1f2937">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/1f2937/ffffff?text=FP">
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .main-container, .auth-container { transition: opacity 0.5s ease-in-out; }
+        .main-container { display: none; }
+        .auth-container { display: flex; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        .dark .loader { border-color: #4b5563; border-top-color: #60a5fa; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .progress-bar-bg { background-color: #e5e7eb; }
+        .dark .progress-bar-bg { background-color: #4b5563; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+    <div id="auth-container" class="auth-container min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
+            <h2 id="auth-title" class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-2">Login</h2>
+            <p id="auth-subtitle" class="text-center text-gray-500 dark:text-gray-400 mb-8">Acesse sua conta para continuar</p>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="login-email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                    <input type="email" id="login-email" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label for="login-password" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Senha</label>
+                    <input type="password" id="login-password" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300">Entrar</button>
+            </form>
+            <form id="register-form" class="hidden">
+                 <div class="mb-4">
+                    <label for="register-email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                    <input type="email" id="register-email" required class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label for="register-password" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Senha</label>
+                    <input type="password" id="register-password" required minlength="6" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300">Criar Conta</button>
+            </form>
+            <p id="auth-error" class="text-red-500 text-xs italic mt-4 text-center"></p>
+            <div class="text-center mt-6">
+                <a href="#" id="toggle-auth" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                    Não tem uma conta? Cadastre-se
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-container" class="main-container max-w-7xl mx-auto p-4 md:p-6">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-md">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Meu Controle Financeiro</h1>
+            <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                <p id="user-email" class="text-gray-600 dark:text-gray-300 text-sm"></p>
+                <button id="dark-mode-toggle" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i data-lucide="moon" class="w-5 h-5 hidden dark:inline-block"></i>
+                    <i data-lucide="sun" class="w-5 h-5 inline-block dark:hidden"></i>
+                </button>
+                <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center gap-2">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-green-100 dark:bg-green-900/50 p-6 rounded-2xl shadow">
+                <h3 class="text-lg font-semibold text-green-800 dark:text-green-300">Receitas</h3>
+                <p id="total-revenue" class="text-3xl font-bold text-green-600 dark:text-green-400">R$ 0,00</p>
+            </div>
+            <div class="bg-red-100 dark:bg-red-900/50 p-6 rounded-2xl shadow">
+                <h3 class="text-lg font-semibold text-red-800 dark:text-red-300">Despesas</h3>
+                <p id="total-expenses" class="text-3xl font-bold text-red-600 dark:text-red-400">R$ 0,00</p>
+            </div>
+            <div class="bg-blue-100 dark:bg-blue-900/50 p-6 rounded-2xl shadow">
+                <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-300">Saldo Atual</h3>
+                <p id="current-balance" class="text-3xl font-bold text-blue-600 dark:text-blue-400">R$ 0,00</p>
+            </div>
+        </div>
+
+        <div id="budgets-section" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md mb-6">
+            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Orçamentos do Mês</h3>
+            <div id="budgets-list" class="space-y-4"></div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-md mb-6 flex flex-col md:flex-row justify-between items-center gap-4 flex-wrap">
+            <div class="flex flex-wrap items-center gap-2">
+                <label for="filter-period" class="font-semibold text-gray-700 dark:text-gray-300">Filtrar por:</label>
+                <select id="filter-period" class="p-2 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="month">Este Mês</option>
+                    <option value="week">Esta Semana</option>
+                    <option value="day">Hoje</option>
+                    <option value="custom">Período Específico</option>
+                </select>
+                <div id="custom-date-filter" class="hidden items-center gap-2">
+                    <input type="date" id="start-date" class="p-2 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                    <span class="text-gray-500 dark:text-gray-400">até</span>
+                    <input type="date" id="end-date" class="p-2 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-4">
+                <button id="manage-categories-btn" title="Gerenciar Categorias e Orçamentos" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-5 h-5"></i> Gerenciar
+                </button>
+                 <button id="export-csv-btn" title="Exportar dados do período para CSV" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <i data-lucide="download" class="w-5 h-5"></i> Exportar
+                </button>
+                <button id="add-transaction-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Nova Transação
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md flex flex-col">
+                <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Despesas por Categoria</h3>
+                <div class="relative h-80 w-full my-auto"><canvas id="category-chart"></canvas></div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md flex flex-col">
+                <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Despesas por Forma de Pagamento</h3>
+                 <div class="relative h-80 w-full my-auto"><canvas id="payment-chart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Últimas Transações</h3>
+            <div id="transaction-list" class="space-y-3"></div>
+             <div id="list-loader" class="hidden justify-center items-center py-8"><div class="loader"></div></div>
+        </div>
+    </div>
+
+    <div id="transaction-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-8 transform transition-all" id="modal-content-transaction">
+             <div class="flex justify-between items-center mb-6">
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-800 dark:text-white">Adicionar Transação</h2>
+                <button id="close-transaction-modal-btn" class="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <form id="transaction-form"></form>
+        </div>
+    </div>
+    
+    <div id="category-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Gerenciar Categorias e Orçamentos</h2>
+                <button id="close-category-modal-btn" class="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <form id="add-category-form" class="flex gap-4 mb-6">
+                 <input type="text" id="new-category-name" placeholder="Nome da nova categoria" required class="flex-grow bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 text-gray-800 dark:text-gray-200">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar</button>
+            </form>
+            <div id="category-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, Timestamp, onSnapshot, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNuSJ-xjgJPvno5qMRkWFloDsNgP5WZu0",
+            authDomain: "controle-financeiro-pess-93758.firebaseapp.com",
+            projectId: "controle-financeiro-pess-93758",
+            storageBucket: "controle-financeiro-pess-93758.firebasestorage.app",
+            messagingSenderId: "78456262739",
+            appId: "1:78456262739:web:81265f858640123945b6a6"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let transactions = [];
+        let categories = [];
+        let unsubscribeTransactions = null;
+        let unsubscribeCategories = null;
+        let categoryChartInstance = null;
+        let paymentChartInstance = null;
+
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            lucide.createIcons();
+            updateCharts(); 
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('main-container').style.display = 'block';
+                lucide.createIcons();
+                await checkAndCreateRecurringTransactions();
+                setupListeners();
+            } else {
+                currentUser = null;
+                if(unsubscribeTransactions) unsubscribeTransactions();
+                if(unsubscribeCategories) unsubscribeCategories();
+                transactions = [];
+                categories = [];
+                document.getElementById('auth-container').style.display = 'flex';
+                document.getElementById('main-container').style.display = 'none';
+            }
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorP = document.getElementById('auth-error');
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                errorP.textContent = '';
+            } catch (error) {
+                console.error("Erro no login:", error);
+                errorP.textContent = "Email ou senha inválidos.";
+            }
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const errorP = document.getElementById('auth-error');
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await createDefaultCategories(userCredential.user.uid);
+                errorP.textContent = '';
+            } catch (error) {
+                console.error("Erro no cadastro:", error);
+                errorP.textContent = error.code === 'auth/email-already-in-use' ? "Este email já está em uso." : "Ocorreu um erro ao criar a conta.";
+            }
+        });
+
+        document.getElementById('toggle-auth').addEventListener('click', (e) => {
+            e.preventDefault();
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const title = document.getElementById('auth-title');
+            const subTitle = document.getElementById('auth-subtitle');
+            
+            loginForm.classList.toggle('hidden');
+            registerForm.classList.toggle('hidden');
+            
+            if (registerForm.classList.contains('hidden')) {
+                title.textContent = 'Login';
+                subTitle.textContent = 'Acesse sua conta para continuar';
+                e.target.textContent = 'Não tem uma conta? Cadastre-se';
+            } else {
+                title.textContent = 'Cadastro';
+                subTitle.textContent = 'Crie sua conta para começar';
+                e.target.textContent = 'Já tem uma conta? Faça login';
+            }
+        });
+
+        document.getElementById('logout-button').addEventListener('click', () => signOut(auth));
+
+        function setupListeners() {
+            if (!currentUser) return;
+            fetchCategories();
+            fetchTransactions();
+        }
+
+        function fetchCategories() {
+            if(unsubscribeCategories) unsubscribeCategories();
+            const q = query(collection(db, 'users', currentUser.uid, 'categories'));
+            unsubscribeCategories = onSnapshot(q, (snapshot) => {
+                categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateUI();
+                renderCategoryList();
+            });
+        }
+
+        function fetchTransactions() {
+            if(unsubscribeTransactions) unsubscribeTransactions();
+            const [startDate, endDate] = getCurrentFilterDates();
+            const listLoader = document.getElementById('list-loader');
+            listLoader.classList.remove('hidden');
+            listLoader.classList.add('flex');
+            
+            const q = query(collection(db, 'users', currentUser.uid, 'transactions'),
+                where('date', '>=', startDate),
+                where('date', '<=', endDate)
+            );
+            unsubscribeTransactions = onSnapshot(q, (snapshot) => {
+                transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                transactions.sort((a, b) => b.date.toDate() - a.date.toDate());
+                updateUI();
+                listLoader.classList.add('hidden');
+            }, (error) => {
+                console.error("Erro ao buscar transações: ", error);
+                listLoader.classList.add('hidden');
+            });
+        }
+        
+        async function createDefaultCategories(uid) {
+            const batch = writeBatch(db);
+            const defaultCategories = ['Alimentação', 'Transporte', 'Moradia', 'Lazer', 'Saúde', 'Salário', 'Outros'];
+            defaultCategories.forEach(name => {
+                const docRef = doc(collection(db, 'users', uid, 'categories'));
+                batch.set(docRef, { name: name, budget: 0 });
+            });
+            await batch.commit();
+        }
+
+        document.getElementById('manage-categories-btn').addEventListener('click', () => openModal('category-modal'));
+        document.getElementById('close-category-modal-btn').addEventListener('click', () => closeModal('category-modal'));
+
+        document.getElementById('add-category-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nameInput = document.getElementById('new-category-name');
+            const name = nameInput.value.trim();
+            if (name && currentUser) {
+                await addDoc(collection(db, 'users', currentUser.uid, 'categories'), { name, budget: 0 });
+                nameInput.value = '';
+            }
+        });
+
+        async function deleteCategory(id) {
+            if (!currentUser) return;
+            const categoryToDelete = categories.find(c => c.id === id);
+            if (!categoryToDelete) return;
+
+            const q = query(collection(db, 'users', currentUser.uid, 'transactions'), where('category', '==', categoryToDelete.name));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                alert('Não é possível apagar esta categoria pois existem transações associadas a ela.');
+                return;
+            }
+            await deleteDoc(doc(db, 'users', currentUser.uid, 'categories', id));
+        }
+
+        async function updateBudget(id, newBudget) {
+            if (!currentUser) return;
+            const budgetValue = parseFloat(newBudget) || 0;
+            await updateDoc(doc(db, 'users', currentUser.uid, 'categories', id), { budget: budgetValue });
+        }
+        
+        document.getElementById('add-transaction-btn').addEventListener('click', () => openTransactionModal());
+        document.getElementById('close-transaction-modal-btn').addEventListener('click', () => closeModal('transaction-modal'));
+
+        document.getElementById('transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const id = e.target.transactionId.value;
+            const isRecurring = e.target.isRecurring.checked;
+            
+            const transactionData = {
+                type: e.target.type.value,
+                name: e.target.name.value,
+                amount: parseFloat(e.target.amount.value),
+                date: Timestamp.fromDate(new Date(e.target.date.value + 'T00:00:00')),
+                category: e.target.category.value,
+                paymentMethod: e.target.type.value === 'expense' ? e.target.paymentMethod.value : 'N/A',
+                isRecurring: isRecurring,
+                userId: currentUser.uid
+            };
+
+            if (isRecurring && !id) {
+                transactionData.lastGenerated = serverTimestamp();
+            }
+
+            try {
+                if (id) {
+                    await updateDoc(doc(db, 'users', currentUser.uid, 'transactions', id), transactionData);
+                } else {
+                    await addDoc(collection(db, 'users', currentUser.uid, 'transactions'), transactionData);
+                }
+                closeModal('transaction-modal');
+            } catch (error) {
+                console.error("Erro ao salvar transação:", error);
+            }
+        });
+
+        async function checkAndCreateRecurringTransactions() {
+            if (!currentUser) return;
+            const now = new Date();
+            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+            const q = query(collection(db, "users", currentUser.uid, "transactions"), where("isRecurring", "==", true));
+            const snapshot = await getDocs(q);
+        
+            const batch = writeBatch(db);
+        
+            for (const docSnap of snapshot.docs) {
+                const recurringTransaction = { id: docSnap.id, ...docSnap.data() };
+                const originalDate = recurringTransaction.date.toDate();
+                const lastGeneratedDate = recurringTransaction.lastGenerated?.toDate() || originalDate;
+        
+                let nextGenerationDate = new Date(lastGeneratedDate.getFullYear(), lastGeneratedDate.getMonth() + 1, originalDate.getDate());
+        
+                while (nextGenerationDate <= currentMonthStart) {
+                    const existingTransactionQuery = query(
+                        collection(db, "users", currentUser.uid, "transactions"),
+                        where("name", "==", recurringTransaction.name),
+                        where("date", "==", Timestamp.fromDate(nextGenerationDate))
+                    );
+                    const existingSnapshot = await getDocs(existingTransactionQuery);
+
+                    if (existingSnapshot.empty) {
+                        const newTransactionData = { ...recurringTransaction };
+                        delete newTransactionData.id;
+                        delete newTransactionData.lastGenerated;
+                        newTransactionData.isRecurring = false; 
+                        newTransactionData.date = Timestamp.fromDate(nextGenerationDate);
+        
+                        const newDocRef = doc(collection(db, "users", currentUser.uid, "transactions"));
+                        batch.set(newDocRef, newTransactionData);
+                    }
+                    
+                    batch.update(docSnap.ref, { lastGenerated: Timestamp.fromDate(nextGenerationDate) });
+                    nextGenerationDate = new Date(nextGenerationDate.getFullYear(), nextGenerationDate.getMonth() + 1, originalDate.getDate());
+                }
+            }
+        
+            try {
+                await batch.commit();
+            } catch (err) {
+                console.error("Erro ao gerar transações recorrentes:", err);
+            }
+        }
+
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            if (transactions.length === 0) {
+                alert('Não há transações para exportar neste período.');
+                return;
+            }
+            const headers = "Data,Nome,Valor,Tipo,Categoria,Forma de Pagamento\n";
+            const csvContent = transactions.map(t => {
+                const date = t.date.toDate().toLocaleDateString('pt-BR');
+                const amount = t.amount;
+                return [date, `"${t.name}"`, amount.toFixed(2), t.type, t.category, t.paymentMethod].join(',');
+            }).join('\n');
+
+            const blob = new Blob(["\uFEFF" + headers + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "transacoes.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        
+        function updateUI() {
+            renderTransactionList();
+            updateSummary();
+            updateCharts();
+            renderBudgets();
+        }
+
+        function renderTransactionList() {
+            const listElement = document.getElementById('transaction-list');
+            listElement.innerHTML = '';
+            if (transactions.length === 0) {
+                listElement.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Nenhuma transação encontrada para este período.</p>';
+                return;
+            }
+            transactions.forEach(t => {
+                const isExpense = t.type === 'expense';
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-3 border-l-4 ${isExpense ? 'border-red-400' : 'border-green-400'} bg-gray-50 dark:bg-gray-800/50 rounded-lg`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="p-2 rounded-full ${isExpense ? 'bg-red-100 dark:bg-red-900/50' : 'bg-green-100 dark:bg-green-900/50'}">
+                           <i data-lucide="${isExpense ? 'arrow-down' : 'arrow-up'}" class="w-5 h-5 ${isExpense ? 'text-red-500' : 'text-green-500'}"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-800 dark:text-gray-200">${t.name}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">${t.category} • ${t.date.toDate().toLocaleDateString('pt-BR')}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <p class="font-bold ${isExpense ? 'text-red-500' : 'text-green-500'}">${formatCurrency(t.amount)}</p>
+                        <div class="flex gap-2">
+                             <button class="edit-btn text-blue-500 hover:text-blue-700" data-id="${t.id}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                             <button class="delete-btn text-red-500 hover:text-red-700" data-id="${t.id}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                `;
+                listElement.appendChild(item);
+            });
+            document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => openTransactionModal(transactions.find(t => t.id === btn.dataset.id))));
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', () => {
+                showConfirmModal('Tem certeza que deseja apagar esta transação?', async () => {
+                    await deleteDoc(doc(db, 'users', currentUser.uid, 'transactions', btn.dataset.id));
+                });
+            }));
+            lucide.createIcons();
+        }
+
+        function updateSummary() {
+            const totalRevenue = transactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
+            const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            document.getElementById('total-revenue').textContent = formatCurrency(totalRevenue);
+            document.getElementById('total-expenses').textContent = formatCurrency(totalExpenses);
+            document.getElementById('current-balance').textContent = formatCurrency(totalRevenue - totalExpenses);
+        }
+
+        function updateCharts() {
+            const expenses = transactions.filter(t => t.type === 'expense');
+            const isDark = document.documentElement.classList.contains('dark');
+            const fontColor = isDark ? '#e5e7eb' : '#374151';
+
+            const categoryData = expenses.reduce((acc, t) => {
+                acc[t.category] = (acc[t.category] || 0) + t.amount;
+                return acc;
+            }, {});
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            categoryChartInstance = new Chart(document.getElementById('category-chart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryData),
+                    datasets: [{ data: Object.values(categoryData), backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6b7280'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: fontColor } } } }
+            });
+
+            const paymentData = expenses.reduce((acc, t) => {
+                acc[t.paymentMethod] = (acc[t.paymentMethod] || 0) + t.amount;
+                return acc;
+            }, {});
+            if (paymentChartInstance) paymentChartInstance.destroy();
+            paymentChartInstance = new Chart(document.getElementById('payment-chart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(paymentData),
+                    datasets: [{ data: Object.values(paymentData), backgroundColor: ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#6b7280'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: fontColor } } } }
+            });
+        }
+        
+        function renderBudgets() {
+            const budgetsList = document.getElementById('budgets-list');
+            budgetsList.innerHTML = '';
+            const expenseCategories = categories.filter(c => c.budget > 0);
+            if (expenseCategories.length === 0) {
+                 budgetsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Nenhum orçamento definido. Gerencie suas categorias para adicionar orçamentos.</p>';
+                 return;
+            }
+            expenseCategories.forEach(cat => {
+                const spent = transactions.filter(t => t.category === cat.name && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                const percentage = Math.min((spent / cat.budget) * 100, 100);
+                const progressBarColor = percentage >= 90 ? 'bg-red-500' : (percentage >= 70 ? 'bg-yellow-500' : 'bg-green-500');
+                
+                const budgetEl = document.createElement('div');
+                budgetEl.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-semibold">${cat.name}</span>
+                        <span class="text-sm">${formatCurrency(spent)} / ${formatCurrency(cat.budget)}</span>
+                    </div>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5">
+                        <div class="${progressBarColor} h-2.5 rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                budgetsList.appendChild(budgetEl);
+            });
+        }
+        
+        function renderCategoryList() {
+            const listEl = document.getElementById('category-list');
+            listEl.innerHTML = '';
+            categories.forEach(cat => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700';
+                itemEl.innerHTML = `
+                    <span class="font-medium">${cat.name}</span>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm">Orçamento:</label>
+                        <input type="number" step="0.01" value="${cat.budget || 0}" class="budget-input w-28 p-1 rounded-md bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500" data-id="${cat.id}">
+                        <button class="delete-category-btn text-red-500 hover:text-red-700" data-id="${cat.id}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+                listEl.appendChild(itemEl);
+            });
+            document.querySelectorAll('.delete-category-btn').forEach(btn => btn.addEventListener('click', () => deleteCategory(btn.dataset.id)));
+            document.querySelectorAll('.budget-input').forEach(input => {
+                let timeout;
+                input.addEventListener('input', (e) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        updateBudget(e.target.dataset.id, e.target.value);
+                    }, 1000);
+                });
+            });
+            lucide.createIcons();
+        }
+
+        function openTransactionModal(transactionToEdit = null) {
+            const form = document.getElementById('transaction-form');
+            const title = document.getElementById('modal-title');
+            const isEditing = !!transactionToEdit;
+            title.textContent = isEditing ? 'Editar Transação' : 'Adicionar Transação';
+
+            form.innerHTML = `
+                <input type="hidden" name="transactionId" value="${isEditing ? transactionToEdit.id : ''}">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <button type="button" id="type-expense-btn" class="p-3 rounded-lg border-2 font-semibold">Despesa</button>
+                    <button type="button" id="type-revenue-btn" class="p-3 rounded-lg border-2 font-semibold">Receita</button>
+                </div>
+                <input type="hidden" name="type" value="expense">
+                
+                <div class="mb-4">
+                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
+                    <input type="text" name="name" required value="${isEditing ? transactionToEdit.name : ''}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 p-2.5">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
+                        <input type="number" step="0.01" name="amount" required value="${isEditing ? transactionToEdit.amount : ''}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 p-2.5">
+                    </div>
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data</label>
+                        <input type="date" name="date" required value="${isEditing ? transactionToEdit.date.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 p-2.5">
+                    </div>
+                </div>
+                 <div class="mb-4">
+                    <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+                    <select name="category" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 p-2.5"></select>
+                </div>
+                <div class="mb-4" id="payment-method-container">
+                    <label for="payment-method" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Forma de Pagamento</label>
+                    <select name="paymentMethod" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 p-2.5">
+                        <option>Boleto</option><option>Crédito</option><option>Débito</option><option>Dinheiro</option><option>Pix</option><option value="Vale Alimentação">Vale Alimentação</option><option value="Vale Refeição">Vale Refeição</option>
+                    </select>
+                </div>
+                 <div class="mt-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="isRecurring" class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-50 dark:bg-gray-700" ${isEditing && transactionToEdit.isRecurring ? 'checked' : ''}>
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">É uma transação recorrente? (Mensal)</span>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="cancel-transaction-btn" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                </div>
+            `;
+
+            document.getElementById('cancel-transaction-btn').addEventListener('click', () => closeModal('transaction-modal'));
+            
+            const categorySelect = form.querySelector('[name="category"]');
+            categories.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.name;
+                option.textContent = c.name;
+                categorySelect.appendChild(option);
+            });
+
+            if (isEditing) {
+                categorySelect.value = transactionToEdit.category;
+                if(transactionToEdit.type === 'expense') form.querySelector('[name="paymentMethod"]').value = transactionToEdit.paymentMethod;
+            }
+
+            const setupTypeButtons = (type) => {
+                const expenseBtn = form.querySelector('#type-expense-btn');
+                const revenueBtn = form.querySelector('#type-revenue-btn');
+                form.querySelector('[name="type"]').value = type;
+                document.getElementById('payment-method-container').style.display = type === 'expense' ? 'block' : 'none';
+                
+                expenseBtn.className = `p-3 rounded-lg border-2 font-semibold ${type === 'expense' ? 'bg-red-500 text-white border-red-500' : 'bg-transparent text-gray-500 border-gray-300 dark:border-gray-600'}`;
+                revenueBtn.className = `p-3 rounded-lg border-2 font-semibold ${type === 'revenue' ? 'bg-green-500 text-white border-green-500' : 'bg-transparent text-gray-500 border-gray-300 dark:border-gray-600'}`;
+            };
+
+            form.querySelector('#type-expense-btn').addEventListener('click', () => setupTypeButtons('expense'));
+            form.querySelector('#type-revenue-btn').addEventListener('click', () => setupTypeButtons('revenue'));
+            
+            setupTypeButtons(isEditing ? transactionToEdit.type : 'expense');
+            openModal('transaction-modal');
+        }
+        
+        function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+        function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+        
+        function showConfirmModal(message, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Confirmar Ação</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-6">${message}</p>
+                    <div class="flex justify-center gap-4">
+                        <button id="confirm-modal-cancel-btn" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-6 rounded-lg">Cancelar</button>
+                        <button id="confirm-modal-confirm-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Confirmar</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('confirm-modal-cancel-btn').onclick = () => closeModal('confirm-modal');
+            document.getElementById('confirm-modal-confirm-btn').onclick = () => {
+                onConfirm();
+                closeModal('confirm-modal');
+            };
+            openModal('confirm-modal');
+        }
+
+        function formatCurrency(value) { return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+        
+        function getCurrentFilterDates() {
+            const filter = document.getElementById('filter-period').value;
+            const now = new Date();
+            let startDate, endDate;
+
+            switch (filter) {
+                case 'day':
+                    startDate = new Date(now.setHours(0, 0, 0, 0));
+                    endDate = new Date(now.setHours(23, 59, 59, 999));
+                    break;
+                case 'week':
+                    const firstDayOfWeek = now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1); 
+                    startDate = new Date(now.setDate(firstDayOfWeek));
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + 6);
+                    endDate.setHours(23, 59, 59, 999);
+                    break;
+                case 'custom':
+                    const startInput = document.getElementById('start-date').value;
+                    const endInput = document.getElementById('end-date').value;
+                    startDate = startInput ? new Date(startInput + 'T00:00:00') : new Date(0);
+                    endDate = endInput ? new Date(endInput + 'T23:59:59') : new Date();
+                    break;
+                case 'month':
+                default:
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                    break;
+            }
+            return [Timestamp.fromDate(startDate), Timestamp.fromDate(endDate)];
+        }
+        
+        document.getElementById('filter-period').addEventListener('change', (e) => {
+            const customFilter = document.getElementById('custom-date-filter');
+            if (e.target.value === 'custom') {
+                customFilter.classList.remove('hidden');
+                customFilter.classList.add('flex');
+            } else {
+                customFilter.classList.add('hidden');
+                fetchTransactions();
+            }
+        });
+        document.getElementById('start-date').addEventListener('change', fetchTransactions);
+        document.getElementById('end-date').addEventListener('change', fetchTransactions);
+        
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+
