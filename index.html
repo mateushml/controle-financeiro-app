@@ -567,67 +567,55 @@
 
             const chartColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6b7280', '#f97316', '#14b8a6', '#d946ef'];
 
-            // Category Chart
-            const categoryData = expenses.reduce((acc, t) => {
-                acc[t.category] = (acc[t.category] || 0) + t.amount;
-                return acc;
-            }, {});
-            if (categoryChartInstance) categoryChartInstance.destroy();
-            categoryChartInstance = new Chart(document.getElementById('category-chart').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(categoryData),
-                    datasets: [{ data: Object.values(categoryData), backgroundColor: chartColors, borderColor: isDark ? '#1f2937' : '#fff', borderWidth: 2 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '60%' }
-            });
+            // Process and sort data ONCE for each chart
+            const processAndSort = (data, groupBy) => {
+                const aggregated = data.reduce((acc, t) => {
+                    acc[t[groupBy]] = (acc[t[groupBy]] || 0) + t.amount;
+                    return acc;
+                }, {});
 
-            if (totalExpenses > 0) {
-                Object.keys(categoryData).sort((a,b) => categoryData[b] - categoryData[a]).forEach((label, index) => {
-                    const amount = categoryData[label];
-                    const percentage = ((amount / totalExpenses) * 100).toFixed(1);
-                    const color = chartColors[index % chartColors.length];
-                    const legendItem = document.createElement('div');
-                    legendItem.className = 'flex items-center text-sm';
-                    legendItem.innerHTML = `
-                        <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></span>
-                        <span class="flex-grow dark:text-gray-300">${label}</span>
-                        <span class="font-semibold dark:text-gray-400">${percentage}%</span>
-                    `;
-                    categoryLegendEl.appendChild(legendItem);
-                });
-            }
+                return Object.entries(aggregated).sort(([,a],[,b]) => b-a);
+            };
 
-            // Payment Chart
-            const paymentData = expenses.reduce((acc, t) => {
-                acc[t.paymentMethod] = (acc[t.paymentMethod] || 0) + t.amount;
-                return acc;
-            }, {});
-            if (paymentChartInstance) paymentChartInstance.destroy();
-            paymentChartInstance = new Chart(document.getElementById('payment-chart').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(paymentData),
-                    datasets: [{ data: Object.values(paymentData), backgroundColor: chartColors, borderColor: isDark ? '#1f2937' : '#fff', borderWidth: 2 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '60%' }
-            });
-            
-            if (totalExpenses > 0) {
-                 Object.keys(paymentData).sort((a,b) => paymentData[b] - paymentData[a]).forEach((label, index) => {
-                    const amount = paymentData[label];
-                    const percentage = ((amount / totalExpenses) * 100).toFixed(1);
-                    const color = chartColors[index % chartColors.length];
-                    const legendItem = document.createElement('div');
-                    legendItem.className = 'flex items-center text-sm';
-                    legendItem.innerHTML = `
-                        <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></span>
-                        <span class="flex-grow dark:text-gray-300">${label}</span>
-                        <span class="font-semibold dark:text-gray-400">${percentage}%</span>
-                    `;
-                    paymentLegendEl.appendChild(legendItem);
+            const sortedCategoryData = processAndSort(expenses, 'category');
+            const sortedPaymentData = processAndSort(expenses, 'paymentMethod');
+
+            // Generic function to render a chart and its legend
+            const renderChart = (chartInstance, canvasId, legendEl, sortedData) => {
+                if (chartInstance) chartInstance.destroy();
+                
+                const labels = sortedData.map(([label]) => label);
+                const values = sortedData.map(([,value]) => value);
+
+                const newChartInstance = new Chart(document.getElementById(canvasId).getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{ data: values, backgroundColor: chartColors, borderColor: isDark ? '#1f2937' : '#fff', borderWidth: 2 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '60%' }
                 });
-            }
+
+                legendEl.innerHTML = '';
+                if (totalExpenses > 0) {
+                    sortedData.forEach(([label, amount], index) => {
+                        const percentage = ((amount / totalExpenses) * 100).toFixed(1);
+                        const color = chartColors[index % chartColors.length];
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'flex items-center text-sm';
+                        legendItem.innerHTML = `
+                            <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></span>
+                            <span class="flex-grow dark:text-gray-300">${label}</span>
+                            <span class="font-semibold dark:text-gray-400">${percentage}%</span>
+                        `;
+                        legendEl.appendChild(legendItem);
+                    });
+                }
+                return newChartInstance;
+            };
+
+            categoryChartInstance = renderChart(categoryChartInstance, 'category-chart', categoryLegendEl, sortedCategoryData);
+            paymentChartInstance = renderChart(paymentChartInstance, 'payment-chart', paymentLegendEl, sortedPaymentData);
         }
         
         function renderBudgets() {
